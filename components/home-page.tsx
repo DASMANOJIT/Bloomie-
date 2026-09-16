@@ -147,7 +147,7 @@ function RevealController() {
 }
 
 function Brand() {
-  return <a href="#home" className="brand" aria-label="Bloomie home"><Image src="/images/bloomie-logo-cro-display.png" alt="" width={1861} height={1985} priority className="brand-symbol" /><Image src="/images/bloomie-logo-name-display.png" alt={"Bloomie \u2013 The Crochet Store"} width={462} height={136} priority className="brand-wordmark" /></a>;
+  return <a href="#home" className="brand" aria-label="Bloomie home"><Image src="/images/bloomie-logo-cro-display.png" alt="" width={1861} height={1985} sizes="64px" className="brand-symbol" /><Image src="/images/bloomie-logo-name-display.png" alt={"Bloomie \u2013 The Crochet Store"} width={462} height={136} sizes="160px" className="brand-wordmark" /></a>;
 }
 
 function Nav({ activeCategory, onCategory }: { activeCategory: ProductCategory; onCategory: (category: ProductCategory) => void }) {
@@ -217,7 +217,7 @@ function ProductImageCarousel({ images, selectedImage, onImageSelect }: { images
     const nextIndex = images.findIndex(image => image.src === selectedImage);
     if (emblaApi && nextIndex >= 0 && nextIndex !== emblaApi.selectedScrollSnap()) emblaApi.scrollTo(nextIndex);
   }, [emblaApi, images, selectedImage]);
-  return <div className="modal-gallery"><div className="modal-gallery-viewport" ref={emblaRef}><div className="modal-gallery-track">{images.map(image => <div className="modal-gallery-slide" key={image.src}><Image src={image.src} alt={image.alt} fill quality={100} unoptimized sizes="(max-width: 768px) 100vw, 50vw" /></div>)}</div></div>{images.length > 1 && <div className="modal-gallery-controls"><button onClick={() => emblaApi?.scrollPrev()} disabled={index === 0} aria-label="Previous product image"><ChevronLeft /></button><div className="carousel-dots" aria-label="Choose product image">{images.map((image, dot) => <button key={image.src} className={dot === index ? "active" : ""} onClick={() => emblaApi?.scrollTo(dot)} aria-label={`Show ${image.colour} image ${dot + 1}`} aria-current={dot === index ? "true" : undefined} />)}</div><button onClick={() => emblaApi?.scrollNext()} disabled={index === images.length - 1} aria-label="Next product image"><ChevronRight /></button></div>}</div>;
+  return <div className="modal-gallery"><div className="modal-gallery-viewport" ref={emblaRef}><div className="modal-gallery-track">{images.map(image => <div className="modal-gallery-slide" key={image.src}><Image src={image.src} alt={image.alt} fill sizes="(max-width: 768px) 100vw, 50vw" /></div>)}</div></div>{images.length > 1 && <div className="modal-gallery-controls"><button onClick={() => emblaApi?.scrollPrev()} disabled={index === 0} aria-label="Previous product image"><ChevronLeft /></button><div className="carousel-dots" aria-label="Choose product image">{images.map((image, dot) => <button key={image.src} className={dot === index ? "active" : ""} onClick={() => emblaApi?.scrollTo(dot)} aria-label={`Show ${image.colour} image ${dot + 1}`} aria-current={dot === index ? "true" : undefined} />)}</div><button onClick={() => emblaApi?.scrollNext()} disabled={index === images.length - 1} aria-label="Next product image"><ChevronRight /></button></div>}</div>;
 }
 
 function ProductModal({ product, onClose, returnFocus }: { product: Product; onClose: () => void; returnFocus: React.RefObject<HTMLElement | null> }) {
@@ -255,7 +255,7 @@ function ProductModal({ product, onClose, returnFocus }: { product: Product; onC
     chooseImage(modalImages[nextIndex].src);
   };
   const message = `Hello Bloomie, I would like to order ${product.name} (${product.productNumber}) in ${selectedColour}. Please share the price and ordering details.`;
-  return <div className="backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}><section ref={dialogRef} className="modal product-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="close" onClick={onClose} aria-label="Close product details"><X /></button><div className="modal-media product-media"><div className="modal-sticky-image"><div className="modal-image-frame"><Image src={selectedImage} alt={selectedImageMeta?.alt ?? product.name} fill quality={100} unoptimized sizes="(max-width: 768px) 100vw, 50vw" /></div>{modalImages.length > 1 && <div className="modal-image-controls"><button type="button" onClick={() => chooseAdjacentImage(-1)} disabled={selectedIndex === 0} aria-label="Previous product image"><ChevronLeft /></button><button type="button" onClick={() => chooseAdjacentImage(1)} disabled={selectedIndex === modalImages.length - 1} aria-label="Next product image"><ChevronRight /></button></div>}</div>{modalImages.length > 1 && <div className="modal-thumbnails" aria-label="Choose product image">{modalImages.map((image, index) => <button key={image.src} type="button" className={selectedImage === image.src ? "active" : ""} onClick={() => chooseImage(image.src)} aria-label={`Show ${image.colour} image ${index + 1}`} aria-current={selectedImage === image.src ? "true" : undefined}><Image src={image.src} alt="" fill sizes="72px" /></button>)}</div>}<ProductImageCarousel images={modalImages} selectedImage={selectedImage} onImageSelect={chooseImage} /></div><div className="modal-copy product-information"><span className="eyebrow">{categoryLabel}</span><dl className="modal-summary"><div><dt>Product number</dt><dd>{product.productNumber}</dd></div></dl><h2 id="modal-title">{product.name}</h2>{product.description && <p>{product.description}</p>}<dl>{product.variants.length > 1 && <div><dt>Colour choices</dt><dd><div className="colour-options" role="radiogroup" aria-label="Choose product colour">{product.variants.map(variant => <button key={variant.id} type="button" className={`colour-option ${selectedVariantId === variant.id ? "active" : ""}`} role="radio" aria-checked={selectedVariantId === variant.id} onClick={() => chooseColour(variant)}><span className="swatch" style={{ background: variant.swatch }} aria-hidden="true" /><span>{variant.label}</span></button>)}</div></dd></div>}{product.customisation && <div><dt>Available customization information</dt><dd>{product.customisation}</dd></div>}<div><dt>Preparation and delivery time</dt><dd>12–15 days</dd></div><div><dt>How to Order</dt><dd><ol className="modal-steps"><li>Select the product and preferred colour.</li><li>Click the “Order via WhatsApp” button.</li><li>Send the automatically generated product enquiry.</li><li>Bloomie will confirm customization, price, availability, and delivery details.</li></ol></dd></div></dl><a className="button whatsapp" href={createWhatsAppUrl(message)} target="_blank" rel="noopener noreferrer"><MessageCircle /> Order via WhatsApp</a><div className="reviews"><h3>Product reviews</h3>{product.reviews.length ? product.reviews.map(review => <article key={review.id} className="review">{review.rating && <b>{review.rating}/5</b>}{review.text && <p>{review.text}</p>}{review.customerName && <span>{review.customerName}</span>}</article>) : <p>Reviews for this creation will be added soon.</p>}</div></div></section></div>;
+  return <div className="backdrop" onMouseDown={event => event.target === event.currentTarget && onClose()}><section ref={dialogRef} className="modal product-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><button className="close" onClick={onClose} aria-label="Close product details"><X /></button><div className="modal-media product-media"><div className="modal-sticky-image"><div className="modal-image-frame"><Image src={selectedImage} alt={selectedImageMeta?.alt ?? product.name} fill sizes="(max-width: 768px) 100vw, 50vw" /></div>{modalImages.length > 1 && <div className="modal-image-controls"><button type="button" onClick={() => chooseAdjacentImage(-1)} disabled={selectedIndex === 0} aria-label="Previous product image"><ChevronLeft /></button><button type="button" onClick={() => chooseAdjacentImage(1)} disabled={selectedIndex === modalImages.length - 1} aria-label="Next product image"><ChevronRight /></button></div>}</div>{modalImages.length > 1 && <div className="modal-thumbnails" aria-label="Choose product image">{modalImages.map((image, index) => <button key={image.src} type="button" className={selectedImage === image.src ? "active" : ""} onClick={() => chooseImage(image.src)} aria-label={`Show ${image.colour} image ${index + 1}`} aria-current={selectedImage === image.src ? "true" : undefined}><Image src={image.src} alt="" fill sizes="72px" /></button>)}</div>}<ProductImageCarousel images={modalImages} selectedImage={selectedImage} onImageSelect={chooseImage} /></div><div className="modal-copy product-information"><span className="eyebrow">{categoryLabel}</span><dl className="modal-summary"><div><dt>Product number</dt><dd>{product.productNumber}</dd></div></dl><h2 id="modal-title">{product.name}</h2>{product.description && <p>{product.description}</p>}<dl>{product.variants.length > 1 && <div><dt>Colour choices</dt><dd><div className="colour-options" role="radiogroup" aria-label="Choose product colour">{product.variants.map(variant => <button key={variant.id} type="button" className={`colour-option ${selectedVariantId === variant.id ? "active" : ""}`} role="radio" aria-checked={selectedVariantId === variant.id} onClick={() => chooseColour(variant)}><span className="swatch" style={{ background: variant.swatch }} aria-hidden="true" /><span>{variant.label}</span></button>)}</div></dd></div>}{product.customisation && <div><dt>Available customization information</dt><dd>{product.customisation}</dd></div>}<div><dt>Preparation and delivery time</dt><dd>12–15 days</dd></div><div><dt>How to Order</dt><dd><ol className="modal-steps"><li>Select the product and preferred colour.</li><li>Click the “Order via WhatsApp” button.</li><li>Send the automatically generated product enquiry.</li><li>Bloomie will confirm customization, price, availability, and delivery details.</li></ol></dd></div></dl><a className="button whatsapp" href={createWhatsAppUrl(message)} target="_blank" rel="noopener noreferrer"><MessageCircle /> Order via WhatsApp</a><div className="reviews"><h3>Product reviews</h3>{product.reviews.length ? product.reviews.map(review => <article key={review.id} className="review">{review.rating && <b>{review.rating}/5</b>}{review.text && <p>{review.text}</p>}{review.customerName && <span>{review.customerName}</span>}</article>) : <p>Reviews for this creation will be added soon.</p>}</div></div></section></div>;
 }
 
 function CreationsBrowser({ activeCategory, onCategory, onOpen }: { activeCategory: ProductCategory; onCategory: (category: ProductCategory) => void; onOpen: (product: Product, trigger: HTMLElement) => void }) {
@@ -465,8 +465,6 @@ function InstagramReelsGallery() {
       scrollLeft: event.currentTarget.scrollLeft,
       moved: false,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setIsDragging(true);
   };
 
   const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -474,9 +472,11 @@ function InstagramReelsGallery() {
     if (!drag || drag.pointerId !== event.pointerId) return;
 
     const distance = event.clientX - drag.startX;
-    if (Math.abs(distance) > 4) {
+    if (!drag.moved && Math.abs(distance) > 4) {
       drag.moved = true;
       suppressCardClick.current = true;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setIsDragging(true);
     }
     if (drag.moved) event.currentTarget.scrollLeft = drag.scrollLeft - distance;
   };
@@ -485,12 +485,14 @@ function InstagramReelsGallery() {
     const drag = dragState.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
 
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+    if (drag.moved && event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     dragState.current = null;
-    setIsDragging(false);
-    window.setTimeout(() => { suppressCardClick.current = false; }, 0);
+    if (drag.moved) {
+      setIsDragging(false);
+      window.setTimeout(() => { suppressCardClick.current = false; }, 0);
+    }
   };
 
   const preventClickAfterDrag = (event: React.MouseEvent<HTMLDivElement>) => {
