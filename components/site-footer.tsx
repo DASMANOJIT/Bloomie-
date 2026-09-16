@@ -1,0 +1,11 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+
+const instagramUrl = "https://www.instagram.com/bloomiecrochetstore/";
+const whatsappUrl = "https://wa.me/917439792042";
+
+export function SiteFooter() {
+  return <footer><div className="footer-content"><div className="footer-grid"><div className="reveal-item reveal-left" style={{ transitionDelay: "0ms" }}><Link href="/#home" className="brand" aria-label="Bloomie home"><Image src="/images/bloomie-logo-cro-display.png" alt="" width={1861} height={1985} className="brand-symbol" /><Image src="/images/bloomie-logo-name-display.png" alt="Bloomie - The Crochet Store" width={462} height={136} className="brand-wordmark" /></Link><p>Little loops of joy, thoughtfully handmade in India.</p></div><nav className="reveal-item reveal-up" style={{ transitionDelay: "90ms" }} aria-label="Footer navigation"><b>Explore</b><Link href="/#home">Home</Link><Link href="/#story">Our Story</Link><Link href="/#creations">Creations</Link><Link href="/creations/bouquets">Shop collections</Link><Link href="/#custom-order">Custom Order</Link><Link href="/support">Support</Link><Link href="/privacy-policy">Privacy Policy</Link><Link href="/faq">FAQ</Link></nav><div className="reveal-item reveal-right" style={{ transitionDelay: "180ms" }}><b>Say hello</b><div className="footer-socials"><a href={instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Visit Bloomie on Instagram"><Image src="/images/instagram.png" alt="" width={26} height={26} className="footer-social-icon" /></a><a href={whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="Chat with Bloomie on WhatsApp"><Image src="/images/WhatsApp.svg.png" alt="" width={26} height={26} className="footer-social-icon" /></a><a href="mailto:bloomiechrochetstore@gmail.com" aria-label="Email Bloomie at bloomiechrochetstore@gmail.com"><Image src="/images/gmail.png" alt="" width={26} height={26} className="footer-social-icon" /></a></div></div></div><div className="footer-bottom"><p>100% Handmade with love in India</p><p>&copy; 2026 Bloomie. All rights reserved.</p><p>Developed and maintained by <a href="https://dmstacklabs.in" target="_blank" rel="noopener noreferrer">DM STACK LABS</a></p></div></div></footer>;
+}
