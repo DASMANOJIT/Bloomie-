@@ -24,4 +24,4 @@ function SiteSchema() {
   return <><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organization) }} />{website && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(website) }} />}</>;
 }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body className={`${display.variable} ${sans.variable}`}><SiteSchema />{children}</body></html>; }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body className={`${display.variable} ${sans.variable} season-durga-puja`}><SiteSchema />{children}</body></html>; }

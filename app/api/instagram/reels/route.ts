@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { products } from "@/data/products";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -58,11 +59,13 @@ interface InstagramPost {
   thumbnail_url?: string;
   permalink: string;
   timestamp?: string;
+  unresolved?: boolean;
   children?: InstagramMediaChild[];
 }
 
 interface InstagramReelsResponse {
   reels: InstagramPost[];
+  productMedia?: InstagramPost[];
   error?: string;
   code?: "INSTAGRAM_CONFIG_MISSING" | "INSTAGRAM_API_ERROR" | "INSTAGRAM_RESPONSE_INVALID";
 }
@@ -70,6 +73,15 @@ interface InstagramReelsResponse {
 interface InstagramDetailResult {
   item?: InstagramMediaItem;
   errorCode?: number | "REQUEST_FAILED";
+}
+
+interface InstagramCollectionResult {
+  items: InstagramMediaItem[];
+  error?: {
+    status?: number;
+    code?: number;
+    type?: string;
+  };
 }
 
 const fields = [
@@ -84,16 +96,43 @@ const fields = [
   "children{id,media_type,media_url,thumbnail_url}",
 ].join(",");
 
-const json = (body: InstagramReelsResponse, status = 200) => NextResponse.json(body, {
+const associatedPosts = products
+  .flatMap(product => [
+    ...(product.instagramPost ? [product.instagramPost] : []),
+    ...(product.instagramPosts ?? []),
+  ].map(post => ({ product, post })));
+const collaborativePosts = associatedPosts.filter(({ post }) => post.source === "collaborative");
+
+const feedCacheMaxAgeMs = 5 * 60 * 1000;
+const feedCacheStaleAgeMs = 60 * 60 * 1000;
+const feedCacheControl = "public, s-maxage=300, stale-while-revalidate=3600";
+let cachedFeed: { body: InstagramReelsResponse; cachedAt: number } | undefined;
+
+const json = (body: InstagramReelsResponse, status = 200, cacheControl = "no-store, max-age=0") => NextResponse.json(body, {
   status,
-  headers: { "Cache-Control": "no-store, max-age=0" },
+  headers: { "Cache-Control": cacheControl },
 });
+
+const getCachedFeed = (maxAge: number) =>
+  cachedFeed && Date.now() - cachedFeed.cachedAt <= maxAge ? cachedFeed.body : undefined;
 
 const isHttpsUrl = (value: unknown): value is string =>
   typeof value === "string" && value.startsWith("https://");
 
 const isSupportedMediaType = (value: unknown): value is InstagramMediaType =>
   value === "IMAGE" || value === "VIDEO" || value === "CAROUSEL_ALBUM";
+
+const normalizeInstagramShortcode = (value: string | undefined) => {
+  if (!value) return undefined;
+
+  try {
+    const url = new URL(value);
+    const [type, shortcode] = url.pathname.split("/").filter(Boolean);
+    return (type === "p" || type === "reel") && shortcode ? shortcode : undefined;
+  } catch {
+    return undefined;
+  }
+};
 
 const getLocalVideoUrl = (mediaId: string) => {
   if (!/^\d+$/.test(mediaId)) return undefined;
@@ -199,6 +238,50 @@ const fetchMediaDetail = async (mediaId: string, accessToken: string): Promise<I
   }
 };
 
+const fetchCollaborativeMedia = async (
+  instagramUserId: string,
+  accessToken: string,
+): Promise<InstagramCollectionResult> => {
+  const items: InstagramMediaItem[] = [];
+  const visitedPageUrls = new Set<string>();
+  const collectionUrl = new URL(
+    `https://graph.facebook.com/v25.0/${encodeURIComponent(instagramUserId)}/collaborative_media`,
+  );
+  collectionUrl.searchParams.set("fields", fields);
+  collectionUrl.searchParams.set("limit", "100");
+  collectionUrl.searchParams.set("access_token", accessToken);
+  let nextUrl: string | undefined = collectionUrl.toString();
+
+  try {
+    while (nextUrl && !visitedPageUrls.has(nextUrl)) {
+      visitedPageUrls.add(nextUrl);
+      const response = await fetch(nextUrl, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
+      const payload = await response.json().catch(() => null) as InstagramMediaResponse | null;
+
+      if (!response.ok || !payload || !Array.isArray(payload.data)) {
+        return {
+          items: [],
+          error: {
+            status: response.status,
+            code: payload?.error?.code,
+            type: payload?.error?.type,
+          },
+        };
+      }
+
+      items.push(...payload.data);
+      nextUrl = payload.paging?.next;
+    }
+
+    return { items };
+  } catch {
+    return { items: [], error: {} };
+  }
+};
+
 const mapWithConcurrency = async <T, R>(
   values: T[],
   limit: number,
@@ -234,6 +317,8 @@ const mergeMediaDetail = (item: InstagramMediaItem, detail: InstagramMediaItem):
 export async function GET(request: Request) {
   const accessToken = normalizeCredential(process.env.INSTAGRAM_ACCESS_TOKEN);
   const instagramUserId = normalizeCredential(process.env.INSTAGRAM_USER_ID);
+  const facebookAccessToken = normalizeCredential(process.env.INSTAGRAM_FACEBOOK_ACCESS_TOKEN);
+  const facebookInstagramUserId = normalizeCredential(process.env.INSTAGRAM_FACEBOOK_USER_ID);
 
   if (!accessToken || !instagramUserId) {
     if (process.env.NODE_ENV === "development") {
@@ -252,16 +337,33 @@ export async function GET(request: Request) {
     }, 503);
   }
 
-  const requestedMediaId = new URL(request.url).searchParams.get("mediaId");
+  const requestUrl = new URL(request.url);
+  const requestedMediaId = requestUrl.searchParams.get("mediaId");
   if (requestedMediaId) {
     if (!/^\d+$/.test(requestedMediaId)) {
       return json({ reels: [], error: "Invalid Instagram media ID", code: "INSTAGRAM_RESPONSE_INVALID" }, 400);
     }
 
-    const detail = await fetchMediaDetail(requestedMediaId, accessToken);
-    const post = detail.item ? toInstagramPost(detail.item) : null;
+    const isCollaborativeMedia = collaborativePosts.some(({ post }) => post.mediaId === requestedMediaId);
+    const collaborativeResult = isCollaborativeMedia && facebookAccessToken && facebookInstagramUserId
+      ? await fetchCollaborativeMedia(facebookInstagramUserId, facebookAccessToken)
+      : null;
+    const collaborativeItem = collaborativeResult?.items.find(item => item.id === requestedMediaId);
+    const detail = !isCollaborativeMedia
+      ? await fetchMediaDetail(requestedMediaId, accessToken)
+      : null;
+    const item = collaborativeItem ?? detail?.item;
+    const post = item ? toInstagramPost(item) : null;
     return json({ reels: post ? [post] : [] });
   }
+  const requestedPermalink = requestUrl.searchParams.get("permalink");
+  const requestedShortcode = normalizeInstagramShortcode(requestedPermalink ?? undefined);
+  const forceRefresh = requestUrl.searchParams.get("refresh") === "1";
+  const isFullFeedRequest = !requestedMediaId && !requestedShortcode;
+  const freshCachedFeed = !forceRefresh && isFullFeedRequest
+    ? getCachedFeed(feedCacheMaxAgeMs)
+    : undefined;
+  if (freshCachedFeed) return json(freshCachedFeed, 200, feedCacheControl);
 
   const mediaById = new Map<string, InstagramMediaItem>();
   const visitedPageUrls = new Set<string>();
@@ -275,7 +377,10 @@ export async function GET(request: Request) {
   try {
     while (nextUrl && !visitedPageUrls.has(nextUrl)) {
       visitedPageUrls.add(nextUrl);
-      const response = await fetch(nextUrl, { cache: "no-store" });
+      const response = await fetch(nextUrl, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(8_000),
+      });
       const payload = await response.json().catch(() => null) as InstagramMediaResponse | null;
 
       if (!response.ok) {
@@ -286,6 +391,8 @@ export async function GET(request: Request) {
           type: payload?.error?.type,
           message: safeMetaMessage,
         });
+        const staleFeed = isFullFeedRequest ? getCachedFeed(feedCacheStaleAgeMs) : undefined;
+        if (staleFeed) return json(staleFeed, 200, feedCacheControl);
         return json({
           reels: [],
           error: safeMetaMessage || "Instagram API request failed",
@@ -313,8 +420,26 @@ export async function GET(request: Request) {
       nextUrl = payload.paging?.next;
     }
 
-    const mediaItems = [...mediaById.values()];
-    const incompleteVideoItems = mediaItems.filter(item => {
+    const requestedItems = new Set<string>();
+    associatedPosts.forEach(({ post }) => {
+      if (post.source !== "collaborative" && post.mediaId && !mediaById.has(post.mediaId)) {
+        requestedItems.add(post.mediaId);
+      }
+    });
+
+    const associatedDetailResults = await mapWithConcurrency(
+      [...requestedItems],
+      2,
+      mediaId => fetchMediaDetail(mediaId, accessToken),
+    );
+    associatedDetailResults.forEach(result => {
+      if (result.item && !mediaById.has(result.item.id)) {
+        mediaById.set(result.item.id, result.item);
+      }
+    });
+
+    const allMediaItems = [...mediaById.values()];
+    const incompleteVideoItems = allMediaItems.filter(item => {
       const isVideo = item.media_type === "VIDEO" || item.media_product_type === "REELS";
       return isVideo && !isHttpsUrl(item.media_url);
     });
@@ -331,15 +456,77 @@ export async function GET(request: Request) {
     );
     const postsById = new Map<string, InstagramPost>();
 
-    mediaItems.forEach(item => {
+    allMediaItems.forEach(item => {
       const enrichedItem = detailById.get(item.id);
       const post = toInstagramPost(enrichedItem ? mergeMediaDetail(item, enrichedItem) : item);
       if (post && !postsById.has(post.id)) postsById.set(post.id, post);
     });
 
-    const posts = [...postsById.values()].sort(
+    const ownPosts = [...postsById.values()].sort(
       (a, b) => new Date(b.timestamp ?? 0).getTime() - new Date(a.timestamp ?? 0).getTime(),
     );
+    const collaborativeResult = facebookAccessToken && facebookInstagramUserId
+      ? await fetchCollaborativeMedia(facebookInstagramUserId, facebookAccessToken)
+      : { items: [] };
+
+    if (collaborativeResult.error && process.env.NODE_ENV === "development") {
+      console.warn("[Instagram Feed] Collaborative media request failed.", collaborativeResult.error);
+    }
+
+    const collaborativeByShortcode = new Map<string, InstagramPost>();
+    collaborativeResult.items.forEach(item => {
+      const shortcode = normalizeInstagramShortcode(item.permalink);
+      const post = toInstagramPost(item);
+      if (shortcode && post && !collaborativeByShortcode.has(shortcode)) {
+        collaborativeByShortcode.set(shortcode, post);
+      }
+    });
+
+    const productMedia = associatedPosts.map(({ product, post }) => {
+      const resolved = collaborativeByShortcode.get(post.shortcode) ?? ownPosts.find(item => (
+        normalizeInstagramShortcode(item.permalink) === post.shortcode
+      ));
+      return resolved ?? {
+        id: `${product.id}-${post.shortcode}-instagram-post`,
+        caption: `${product.name} on Instagram`,
+        media_type: "VIDEO" as const,
+        media_product_type: "REELS",
+        thumbnail_url: product.thumbnail,
+        permalink: post.permalink,
+        unresolved: true,
+      };
+    });
+    const targetAssociation = collaborativePosts[0];
+    const targetShortcode = targetAssociation?.post.shortcode;
+    const resolvedTarget = targetShortcode
+      ? collaborativeByShortcode.get(targetShortcode) ?? ownPosts.find(post => (
+        normalizeInstagramShortcode(post.permalink) === targetShortcode
+      ))
+      : undefined;
+    const targetPost = resolvedTarget ?? (targetAssociation ? {
+      id: `${targetAssociation.product.id}-instagram-post`,
+      caption: `${targetAssociation.product.name} on Instagram`,
+      media_type: "VIDEO" as const,
+      media_product_type: "REELS",
+      thumbnail_url: targetAssociation.product.thumbnail,
+      permalink: targetAssociation.post.permalink,
+      unresolved: true,
+    } : undefined);
+    let posts = targetPost
+      ? [
+        targetPost,
+        ...ownPosts.filter(post => (
+          post.id !== targetPost.id && normalizeInstagramShortcode(post.permalink) !== targetShortcode
+        )),
+      ]
+      : ownPosts;
+
+    if (requestedShortcode) {
+      posts = [...posts, ...productMedia].filter((post, index, all) => (
+        normalizeInstagramShortcode(post.permalink) === requestedShortcode &&
+        all.findIndex(candidate => candidate.id === post.id) === index
+      ));
+    }
     const missingVideoIds = posts
       .filter(post => post.media_type === "VIDEO" && !post.mediaUrl)
       .map(post => post.id);
@@ -351,11 +538,15 @@ export async function GET(request: Request) {
       }
     }
 
-    return json({ reels: posts });
+    const body = { reels: posts, productMedia };
+    if (isFullFeedRequest) cachedFeed = { body, cachedAt: Date.now() };
+    return json(body, 200, isFullFeedRequest ? feedCacheControl : undefined);
   } catch {
     if (process.env.NODE_ENV === "development") {
       console.error("[Instagram Reels] Instagram API request failed before a valid response was received.");
     }
+    const staleFeed = isFullFeedRequest ? getCachedFeed(feedCacheStaleAgeMs) : undefined;
+    if (staleFeed) return json(staleFeed, 200, feedCacheControl);
     return json({
       reels: [],
       error: "Instagram API request failed",

@@ -21,6 +21,13 @@ export interface ProductReview {
   media?: string;
 }
 
+export interface ProductInstagramPost {
+  mediaId?: string;
+  permalink: string;
+  shortcode: string;
+  source?: "own" | "collaborative";
+}
+
 export interface Product {
   id: string;
   productNumber: string;
@@ -32,6 +39,8 @@ export interface Product {
   description?: string;
   customisation?: string;
   preparationTime: string;
+  instagramPost?: ProductInstagramPost;
+  instagramPosts?: ProductInstagramPost[];
   reviews: ProductReview[];
 }
 
@@ -63,6 +72,34 @@ export const products: Product[] = [
     ],
     customisation,
     preparationTime,
+    instagramPosts: [
+      { permalink: "https://www.instagram.com/p/DbsTKliiytx/", shortcode: "DbsTKliiytx", source: "own" },
+      { permalink: "https://www.instagram.com/p/DcFxweHtvAC/", shortcode: "DcFxweHtvAC", source: "own" },
+    ],
+    reviews: [],
+  },
+  {
+    id: "top-002",
+    productNumber: "TOP-002",
+    name: "Crochet Top 2",
+    category: "tops",
+    thumbnail: "/images/top_2.png",
+    images: [
+      { src: "/images/top_2.png", alt: "Crochet Top 2 burgundy halter-style crochet top, front view", colour: "Burgundy" },
+      { src: "/images/top_2(1).png", alt: "Crochet Top 2 burgundy halter-style crochet top, back view", colour: "Burgundy" },
+    ],
+    variants: [
+      { id: "burgundy", label: "Burgundy", images: ["/images/top_2.png", "/images/top_2(1).png"], swatch: "#7d0f25" },
+    ],
+    description: "A burgundy halter-style crochet top with tie details and decorative edging. A free earring is included with every purchase of this top.",
+    customisation,
+    preparationTime,
+    instagramPost: {
+      permalink: "https://www.instagram.com/p/DdwtFOoTMpv/",
+      shortcode: "DdwtFOoTMpv",
+      mediaId: "18033583199846095",
+      source: "collaborative",
+    },
     reviews: [],
   },
   {

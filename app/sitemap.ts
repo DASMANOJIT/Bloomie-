@@ -8,6 +8,7 @@ const publicPaths = [...new Set([
   "/support",
   "/privacy-policy",
   "/faq",
+  "/tutorial",
   ...categories.map(category => `/creations/${category.id}`),
   ...products.map(productPath),
 ])];

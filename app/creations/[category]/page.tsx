@@ -6,8 +6,6 @@ import { categories, products } from "@/data/products";
 import { categoryDetails, getCategory } from "@/lib/catalog";
 import { createPageMetadata } from "@/lib/page-metadata";
 
-export const dynamicParams = false;
-
 export function generateStaticParams() {
   return categories.map(category => ({ category: category.id }));
 }

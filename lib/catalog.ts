@@ -42,6 +42,8 @@ export const getProduct = (category: string, slug: string) =>
   products.find(product => product.category === category && productSlug(product) === slug);
 
 export const getProductDescription = (product: Product) => {
+  if (product.description) return product.description;
+
   const colours = product.variants.map(variant => variant.label).join(", ");
   const itemType: Record<ProductCategory, string> = {
     tops: "top",
