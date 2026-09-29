@@ -65,11 +65,13 @@ main{overflow-x:clip}
 /* Product detail refinements */
 .product-card{cursor:pointer}
 .product-card-media{position:absolute;inset:0}
-.card-image .product-card-media-slide{position:absolute;inset:0;width:100%;height:100%;transform:none}
+.card-image .product-card-media-slide{position:absolute;inset:0;width:100%;height:100%;opacity:1;transform:none;transition:opacity .6s ease}
 .card-image .product-card-media-outgoing{z-index:0;opacity:1}
 .card-image .product-card-media-pending{z-index:1;opacity:0}
-.card-image .product-card-media-incoming{z-index:1;animation:product-card-media-in .6s ease both}
-@keyframes product-card-media-in{from{opacity:0}to{opacity:1}}
+.card-image .product-card-media-incoming{z-index:1;opacity:1}
+.card-share-button{display:grid;place-items:center;flex:0 0 44px;width:44px;height:44px;padding:0;border:1px solid var(--blush);border-radius:50%;background:var(--cream);color:var(--burgundy);cursor:pointer;transition:background .2s,border-color .2s,transform .2s}
+.card-share-button:hover{border-color:var(--pink);background:var(--blush);transform:translateY(-1px)}
+.card-share-button svg{width:18px;height:18px}
 .story-image img{object-position:center 42%}
 .modal{width:min(1160px,100%);height:min(88vh,760px);max-height:88vh;overflow:hidden;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .modal-media{position:relative;min-width:0;min-height:0;background:var(--cream);display:flex;flex-direction:column}

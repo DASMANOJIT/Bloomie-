@@ -3,14 +3,16 @@
 import { Check, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-export function ShareButton({ path, title }: { path: string; title: string }) {
-  const [copied, setCopied] = useState(false);
+type ShareStatus = "idle" | "copied" | "failed";
+
+export function ShareButton({ path, title, compact = false, className = "" }: { path: string; title: string; compact?: boolean; className?: string }) {
+  const [status, setStatus] = useState<ShareStatus>("idle");
 
   useEffect(() => {
-    if (!copied) return;
-    const timer = window.setTimeout(() => setCopied(false), 1800);
+    if (status === "idle") return;
+    const timer = window.setTimeout(() => setStatus("idle"), 1800);
     return () => window.clearTimeout(timer);
-  }, [copied]);
+  }, [status]);
 
   const share = async () => {
     const url = new URL(path, window.location.origin).toString();
@@ -24,7 +26,7 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
     }
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(true);
+      setStatus("copied");
       return;
     } catch {
       const input = document.createElement("textarea");
@@ -36,9 +38,11 @@ export function ShareButton({ path, title }: { path: string; title: string }) {
       input.select();
       const copiedSuccessfully = document.execCommand("copy");
       input.remove();
-      if (copiedSuccessfully) setCopied(true);
+      setStatus(copiedSuccessfully ? "copied" : "failed");
     }
   };
 
-  return <button className="button ghost share-button" type="button" onClick={share} aria-live="polite">{copied ? <><Check /> Copied</> : <><Share2 /> Share</>}</button>;
+  const label = status === "copied" ? "Link copied" : status === "failed" ? "Unable to copy" : "Share";
+  const buttonClassName = `${compact ? "card-share-button" : "button ghost share-button"} ${className}`.trim();
+  return <button className={buttonClassName} type="button" onClick={event => { event.stopPropagation(); void share(); }} aria-label={compact ? `Share ${title}` : undefined} title={compact ? `Share ${title}` : undefined}><span aria-live="polite" className={compact ? "sr-only" : undefined}>{label}</span>{status === "copied" ? <Check aria-hidden="true" /> : <Share2 aria-hidden="true" />}{!compact && status === "idle" && " Share"}</button>;
 }

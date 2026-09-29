@@ -208,6 +208,7 @@ function ProductCardMedia({ product, posts }: { product: Product; posts: Instagr
   const [reducedMotion, setReducedMotion] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const activeIndexRef = useRef(0);
 
   useEffect(() => {
     const query = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -230,11 +231,12 @@ function ProductCardMedia({ product, posts }: { product: Product; posts: Instagr
   const activeIsVideo = preview?.kind === "video";
   const advance = useCallback(() => {
     if (items.length < 2) return;
+    const currentIndex = activeIndexRef.current;
+    const nextIndex = (currentIndex + 1) % items.length;
     setIncomingReady(false);
-    setActiveIndex(index => {
-      setPreviousIndex(index);
-      return (index + 1) % items.length;
-    });
+    setPreviousIndex(currentIndex);
+    setActiveIndex(nextIndex);
+    activeIndexRef.current = nextIndex;
   }, [items.length]);
 
   useEffect(() => {
@@ -267,9 +269,9 @@ function ProductCardMedia({ product, posts }: { product: Product; posts: Instagr
     const itemPreview = item.kind === "instagram" ? item.preview : null;
     const className = `product-card-media-slide product-card-media-${state}`;
     const markReady = () => { if (state !== "outgoing") setIncomingReady(true); };
-    if (item.kind === "image") return <Image key={`${state}-${item.id}`} className={className} src={item.image.src} alt={item.image.alt} fill sizes="(max-width: 700px) 86vw, (max-width: 1100px) 50vw, 33vw" onLoad={markReady} />;
-    if (itemPreview?.kind === "video" && state !== "outgoing") return <video key={`${state}-${item.id}`} className={className} ref={videoRef} src={itemPreview.src} poster={itemPreview.poster || item.poster} autoPlay={isVisible} muted playsInline controls={false} preload="metadata" onLoadedData={markReady} onEnded={() => { if (isVisible && !reducedMotion) advance(); }} />;
-    return <Image key={`${state}-${item.id}`} className={className} src={itemPreview?.kind === "image" ? itemPreview.src : itemPreview?.poster || item.poster} alt={`${product.name} Instagram preview`} fill sizes="(max-width: 700px) 86vw, (max-width: 1100px) 50vw, 33vw" onLoad={markReady} />;
+    if (item.kind === "image") return <Image key={item.id} className={className} src={item.image.src} alt={item.image.alt} fill sizes="(max-width: 700px) 86vw, (max-width: 1100px) 50vw, 33vw" onLoad={markReady} />;
+    if (itemPreview?.kind === "video" && state !== "outgoing") return <video key={item.id} className={className} ref={videoRef} src={itemPreview.src} poster={itemPreview.poster || item.poster} autoPlay={isVisible} muted playsInline controls={false} preload="metadata" onLoadedData={markReady} onEnded={() => { if (isVisible && !reducedMotion) advance(); }} />;
+    return <Image key={item.id} className={className} src={itemPreview?.kind === "image" ? itemPreview.src : itemPreview?.poster || item.poster} alt={`${product.name} Instagram preview`} fill sizes="(max-width: 700px) 86vw, (max-width: 1100px) 50vw, 33vw" onLoad={markReady} />;
   };
 
   const activeState = previousIndex === null || reducedMotion ? "static" : incomingReady ? "incoming" : "pending";
@@ -439,7 +441,7 @@ function ProductCard({ product, posts, onOpen, style }: { product: Product; post
       open(event);
     }
   };
-  return <article className="card product-card reveal-item reveal-up" style={style} role="button" tabIndex={0} onClick={open} onKeyDown={onKeyDown} aria-label={`View details for ${product.name}`}><div className="card-image"><ProductCardMedia product={product} posts={posts} />{product.id === "top-002" && <Image src="/images/sticky.png" alt="Free gift" width={500} height={500} sizes="104px" style={{ position: "absolute", zIndex: 2, top: 0, right: 0, width: 104, height: 104, objectFit: "contain", pointerEvents: "none", filter: "drop-shadow(0 5px 10px rgba(75,13,18,.16))", transform: "none" }} />}</div><div className="card-copy"><span className="tag"><Sparkles /> {product.productNumber}</span><h3>{product.name}</h3><p>{getProductDescription(product)}</p><span className="text-link">View Details ↗</span></div></article>;
+  return <article className="card product-card reveal-item reveal-up" style={style} role="button" tabIndex={0} onClick={open} onKeyDown={onKeyDown} aria-label={`View details for ${product.name}`}><div className="card-image"><ProductCardMedia product={product} posts={posts} />{product.id === "top-002" && <Image src="/images/sticky.png" alt="Free gift" width={500} height={500} sizes="104px" style={{ position: "absolute", zIndex: 2, top: 0, right: 0, width: 104, height: 104, objectFit: "contain", pointerEvents: "none", filter: "drop-shadow(0 5px 10px rgba(75,13,18,.16))", transform: "none" }} />}</div><div className="card-copy"><span className="tag"><Sparkles /> {product.productNumber}</span><div className="flex w-full items-center justify-between gap-3"><h3 className="min-w-0 flex-1">{product.name}</h3><ShareButton path={productPath(product)} title={product.name} compact className="shrink-0" /></div><p>{getProductDescription(product)}</p><span className="text-link">View Details ↗</span></div></article>;
 }
 
 function ProductCarousel({ items, posts, onOpen }: { items: Product[]; posts: InstagramPost[]; onOpen: (product: Product, trigger: HTMLElement) => void }) {
