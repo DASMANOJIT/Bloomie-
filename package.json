@@ -7,6 +7,7 @@
   },
   "scripts": {
     "install:ci": "node scripts/install-ci.mjs",
+    "instagram:auth": "node scripts/setup-instagram-facebook-auth.mjs",
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",

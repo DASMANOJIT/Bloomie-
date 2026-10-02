@@ -26,6 +26,7 @@ export interface ProductInstagramPost {
   permalink: string;
   shortcode: string;
   source?: "own" | "collaborative";
+  featured?: boolean;
 }
 
 export interface Product {
@@ -73,8 +74,8 @@ export const products: Product[] = [
     customisation,
     preparationTime,
     instagramPosts: [
-      { permalink: "https://www.instagram.com/p/DbsTKliiytx/", shortcode: "DbsTKliiytx", source: "own" },
-      { permalink: "https://www.instagram.com/p/DcFxweHtvAC/", shortcode: "DcFxweHtvAC", source: "own" },
+      { permalink: "https://www.instagram.com/p/DbsTKliiytx/", shortcode: "DbsTKliiytx", mediaId: "18117572309492280", source: "collaborative" },
+      { permalink: "https://www.instagram.com/p/DcFxweHtvAC/", shortcode: "DcFxweHtvAC", mediaId: "17908043367465880", source: "collaborative" },
     ],
     reviews: [],
   },
@@ -99,6 +100,7 @@ export const products: Product[] = [
       shortcode: "DdwtFOoTMpv",
       mediaId: "18033583199846095",
       source: "collaborative",
+      featured: true,
     },
     reviews: [],
   },
